@@ -39,8 +39,8 @@
             <span><span id="player-name">Игрок</span></span>
             <span>Счет: <span id="score">0</span></span>
         </div>
-        <!-- ИЗМЕНЕНИЕ: Добавлено touch-action: none для предотвращения прокрутки страницы при свайпах -->
-        <canvas id="gameCanvas" style="touch-action: none;"></canvas>
+        <!-- ИЗМЕНЕНИЕ: Убрали touch-action: none отсюда, так как теперь контролируем это через JS для всего документа -->
+        <canvas id="gameCanvas"></canvas>
         <div id="gameOver" style="display: none;">
             <h2>Игра окончена!</h2>
             <p>Ваш счет: <span id="finalScore"></span></p>
@@ -273,22 +273,29 @@
         if ((keyPressed === 40 || keyPressed === 83) && !goingUp) { direction = 'down'; changingDirection = true; }
     });
 
-    // ИЗМЕНЕНИЕ: УПРАВЛЕНИЕ ДЛЯ СМАРТФОНОВ (СВАЙПЫ)
-    const canvasEl = document.getElementById('gameCanvas');
+    // ИЗМЕНЕНИЕ: УПРАВЛЕНИЕ ДЛЯ СМАРТФОНОВ (СВАЙПЫ ПО ВСЕМУ ЭКРАНУ)
     let touchStartX = 0;
     let touchStartY = 0;
 
-    canvasEl.addEventListener('touchstart', function(event) {
+    // Вешаем слушатели на весь document, а не только на canvas
+    document.addEventListener('touchstart', function(event) {
+        // Проверяем, что мы находимся на экране игры
+        if (document.getElementById('screen-game').style.display !== 'block') return;
+        
         touchStartX = event.changedTouches[0].screenX;
         touchStartY = event.changedTouches[0].screenY;
     }, {passive: false});
 
-    canvasEl.addEventListener('touchmove', function(event) {
-        // Запрещаем стандартную прокрутку экрана при свайпе по игровому полю
-        event.preventDefault(); 
+    document.addEventListener('touchmove', function(event) {
+        // Запрещаем прокрутку экрана ТОЛЬКО во время игры
+        if (document.getElementById('screen-game').style.display === 'block') {
+            event.preventDefault(); 
+        }
     }, {passive: false});
 
-    canvasEl.addEventListener('touchend', function(event) {
+    document.addEventListener('touchend', function(event) {
+        // Игнорируем свайпы, если мы не в игре
+        if (document.getElementById('screen-game').style.display !== 'block') return;
         if (changingDirection) return;
 
         let touchEndX = event.changedTouches[0].screenX;
@@ -297,7 +304,7 @@
         let diffX = touchEndX - touchStartX;
         let diffY = touchEndY - touchStartY;
 
-        // Игнорируем слишком маленькие сдвиги (случайные тапы)
+        // Игнорируем случайные микро-тапы
         if (Math.abs(diffX) < 15 && Math.abs(diffY) < 15) return;
 
         const goingUp = direction === 'up';
@@ -305,7 +312,7 @@
         const goingRight = direction === 'right';
         const goingLeft = direction === 'left';
 
-        // Определяем, по какой оси свайп был сильнее
+        // Логика поворота змейки по свайпу
         if (Math.abs(diffX) > Math.abs(diffY)) {
             // Горизонтальный свайп
             if (diffX > 0 && !goingLeft) { direction = 'right'; changingDirection = true; } 
