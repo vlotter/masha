@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
     <title>Через вселенные со студлидером</title>
     <link rel="stylesheet" href="style.css">
-    <!-- VK Bridge подключаем один раз -->
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
 </head>
 <body>
@@ -15,7 +14,7 @@
     <h1>Через вселенные со студлидером</h1>
     <nav class="main-menu">
         <button class="btn" onclick="showScreen('screen-play')">Играть</button>
-        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидера</button>
+        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
     </nav>
 </div>
 
@@ -44,7 +43,7 @@
         <div id="gameOver" style="display: none;">
             <h2>Игра окончена!</h2>
             <p>Ваш счет: <span id="finalScore"></span></p>
-            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидера</button>
+            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
             <button class="btn" onclick="initGame()">Играть снова</button>
         </div>
     </div>
@@ -53,7 +52,7 @@
 
 <!-- ЭКРАН 4: ТАБЛИЦА ЛИДЕРОВ -->
 <div id="screen-leaderboard" class="container" style="display: none;">
-    <h1>Таблица лидера</h1>
+    <h1>Таблица лидеров</h1>
     <div class="table-container">
         <table id="leaderboardTable">
             <thead>
@@ -62,32 +61,31 @@
                 <th>Фото</th>
                 <th>Игрок</th>
                 <th>Очки</th>
-                <th>Время попытки</th>
+                <th>Время</th>
             </tr>
             </thead>
             <tbody>
-            <tr><td colspan="4" style="text-align:center;">Загрузка...</td></tr>
+            <tr><td colspan="5" style="text-align:center;">Загрузка...</td></tr>
             </tbody>
         </table>
     </div>
+    <!-- Новая кнопка очистки -->
+    <button class="btn" style="background: #555; margin-top: 20px;" onclick="clearLeaderboard()">Очистить таблицу</button>
     <button class="back-link" onclick="showScreen('screen-main')">Назад на главную</button>
 </div>
 
 <script>
-    // --- ПЕРЕМЕННЫЕ ---
-    let userInfo = { first_name: 'Игрок', last_name: '', photo_100: '' };
+    let userInfo = { id: 0, first_name: 'Игрок', last_name: '', photo_100: '' };
     let isVKInitialized = false;
     const gridSize = 20;
     let snake, food, direction, score, gameLoop;
 
-    // --- ЛОГИКА ЭКРАНОВ ---
     function showScreen(screenId) {
         document.querySelectorAll('body > div').forEach(div => div.style.display = 'none');
         document.getElementById(screenId).style.display = 'block';
-        if (gameLoop) clearInterval(gameLoop); // Остановить игру при уходе
+        if (gameLoop) clearInterval(gameLoop);
     }
 
-    // --- ИНИЦИАЛИЗАЦИЯ VK ---
     async function startApp() {
         try {
             await vkBridge.send('VKWebAppInit');
@@ -98,14 +96,15 @@
         }
     }
     startApp();
+
     function getFormattedDate() {
         const now = new Date();
         const pad = (n) => n.toString().padStart(2, '0');
         const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-        const date = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear().toString().slice(-2)}`;
+        const date = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}`;
         return { time, date };
     }
-    // --- ЛОГИКА ИГРЫ ---
+
     function initGame() {
         showScreen('screen-game');
         document.getElementById('loading-game').style.display = 'none';
@@ -143,7 +142,7 @@
         if (direction === 'down') head.y++;
 
         const canvas = document.getElementById('gameCanvas');
-        if (head.x < 0 || head.x * gridSize >= canvas.width || head.y < 0 || head.y * gridSize >= canvas.height || snake.some((seg, i) => i !== 0 && seg.x === head.x && seg.y === head.y)) {
+        if (head.x < 0 || head.x * gridSize >= canvas.width || head.y < 0 || head.y * gridSize >= canvas.height || snake.some((seg, i) => seg.x === head.x && seg.y === head.y)) {
             return endGame();
         }
 
@@ -181,6 +180,7 @@
     async function saveScore() {
         if (!isVKInitialized) return;
         try {
+            const { time, date } = getFormattedDate(); // Исправлено: получение даты и времени
             const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['leaderboard_snake'] });
             let list = data.keys[0].value ? JSON.parse(data.keys[0].value) : [];
 
@@ -201,46 +201,52 @@
             }
             list.sort((a, b) => b.score - a.score);
             await vkBridge.send('VKWebAppStorageSet', { key: 'leaderboard_snake', value: JSON.stringify(list.slice(0, 50)) });
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Ошибка сохранения:", e); }
     }
 
     async function loadLeaderboard() {
         const tbody = document.querySelector('#leaderboardTable tbody');
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Загрузка...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Загрузка...</td></tr>';
         if (!isVKInitialized) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">VK не инициализирован</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">VK не инициализирован</td></tr>';
             return;
         }
         try {
             const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['leaderboard_snake'] });
-            if (!data.keys[0].value) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Рекордов пока нет</td></tr>';
+            if (!data.keys[0].value || JSON.parse(data.keys[0].value).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Рекордов пока нет</td></tr>';
                 return;
             }
             const list = JSON.parse(data.keys[0].value);
             tbody.innerHTML = list.map((e, i) => `
-                    <tr>
-                        <td>${i + 1}</td>
-                        <td><img src="${e.photo}" style="width:30px; border-radius:50%"></td>
-                        <td>${e.name}</td>
-                        <td>${e.score}</td>
-                    </tr>
-                `).join('');
-        } catch (e) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Ошибка загрузки</td></tr>'; }
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><img src="${e.photo}" style="width:30px; border-radius:50%"></td>
+                    <td>${e.name}</td>
+                    <td>${e.score}</td>
+                    <td>${e.time || ''}</td>
+                </tr>
+            `).join('');
+        } catch (e) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Ошибка загрузки</td></tr>'; }
     }
 
-    // --- УПРАВЛЕНИЕ ---
+    // Функция очистки таблицы
+    async function clearLeaderboard() {
+        if (!confirm("Вы уверены, что хотите очистить таблицу рекордов?")) return;
+        if (!isVKInitialized) return;
+        try {
+            await vkBridge.send('VKWebAppStorageSet', { key: 'leaderboard_snake', value: '' });
+            loadLeaderboard(); // Обновляем вид
+        } catch (e) { console.error("Ошибка очистки:", e); }
+    }
+
+    // Управление
     document.addEventListener('keydown', (event) => {
         const keyPressed = event.keyCode;
-        const goingUp = direction === 'up';
-        const goingDown = direction === 'down';
-        const goingRight = direction === 'right';
-        const goingLeft = direction === 'left';
-
-        if ((keyPressed === 37 || keyPressed === 65) && !goingRight) direction = 'left'; // A
-        if ((keyPressed === 38 || keyPressed === 87) && !goingDown) direction = 'up';   // W
-        if ((keyPressed === 39 || keyPressed === 68) && !goingLeft) direction = 'right';// D
-        if ((keyPressed === 40 || keyPressed === 83) && !goingUp) direction = 'down'; // S
+        if ((keyPressed === 37 || keyPressed === 65) && direction !== 'right') direction = 'left';
+        if ((keyPressed === 38 || keyPressed === 87) && direction !== 'down') direction = 'up';
+        if ((keyPressed === 39 || keyPressed === 68) && direction !== 'left') direction = 'right';
+        if ((keyPressed === 40 || keyPressed === 83) && direction !== 'up') direction = 'down';
     });
 </script>
 </body>
