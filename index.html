@@ -39,7 +39,8 @@
             <span><span id="player-name">Игрок</span></span>
             <span>Счет: <span id="score">0</span></span>
         </div>
-        <canvas id="gameCanvas"></canvas>
+        <!-- ИЗМЕНЕНИЕ: Добавлено touch-action: none для предотвращения прокрутки страницы при свайпах -->
+        <canvas id="gameCanvas" style="touch-action: none;"></canvas>
         <div id="gameOver" style="display: none;">
             <h2>Игра окончена!</h2>
             <p>Ваш счет: <span id="finalScore"></span></p>
@@ -52,7 +53,6 @@
 
 <!-- ЭКРАН 4: ТАБЛИЦА ЛИДЕРОВ -->
 <div id="screen-leaderboard" class="container" style="display: none;">
-    <!-- ИЗМЕНЕНИЕ: Профиль игрока вынесен наверх -->
     <div style="text-align: center; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
         <img id="lb-user-photo" src="" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; display: none;">
         <span id="lb-user-name" style="font-size: 1.2em; font-weight: bold;"></span>
@@ -64,7 +64,6 @@
             <thead>
             <tr>
                 <th>№</th>
-                <!-- ИЗМЕНЕНИЕ: Убраны дублирующиеся колонки -->
                 <th>Очки</th>
                 <th>Дата и время</th>
             </tr>
@@ -83,7 +82,6 @@
     let isVKInitialized = false;
     const gridSize = 20;
     
-    // ИЗМЕНЕНИЕ: Добавлена переменная для фикса бага с управлением
     let snake, food, direction, score, gameLoop, changingDirection;
 
     function showScreen(screenId) {
@@ -126,7 +124,7 @@
 
         snake = [{ x: 10, y: 10 }];
         direction = 'right';
-        changingDirection = false; // Сбрасываем блокировку при старте
+        changingDirection = false; 
         score = 0;
         document.getElementById('score').textContent = score;
         generateFood();
@@ -147,7 +145,6 @@
     }
 
     function update() {
-        // ИЗМЕНЕНИЕ: Разрешаем сменить направление на этом шаге
         changingDirection = false;
 
         const head = { x: snake[0].x, y: snake[0].y };
@@ -219,9 +216,7 @@
         } catch (e) { console.error("Ошибка сохранения:", e); }
     }
 
-    // ИЗМЕНЕНИЕ: Обновлена логика вывода данных в таблицу
     async function loadLeaderboard() {
-        // Устанавливаем данные профиля над таблицей
         const userPhoto = document.getElementById('lb-user-photo');
         if (userInfo.photo_100) {
             userPhoto.src = userInfo.photo_100;
@@ -243,7 +238,6 @@
                 return;
             }
             const list = JSON.parse(data.keys[0].value);
-            // Обратите внимание: убрали вывод фото и имени из каждой строки
             tbody.innerHTML = list.map((e, i) => `
                 <tr>
                     <td>${i + 1}</td>
@@ -263,9 +257,8 @@
         } catch (e) { console.error("Ошибка очистки:", e); }
     }
 
-    // ИЗМЕНЕНИЕ: Фикс бага с быстрым нажатием клавиш
+    // УПРАВЛЕНИЕ: КЛАВИАТУРА
     document.addEventListener('keydown', (event) => {
-        // Если направление уже менялось на этом шаге, игнорируем нажатие
         if (changingDirection) return;
 
         const keyPressed = event.keyCode;
@@ -279,6 +272,51 @@
         if ((keyPressed === 39 || keyPressed === 68) && !goingLeft) { direction = 'right'; changingDirection = true; }
         if ((keyPressed === 40 || keyPressed === 83) && !goingUp) { direction = 'down'; changingDirection = true; }
     });
+
+    // ИЗМЕНЕНИЕ: УПРАВЛЕНИЕ ДЛЯ СМАРТФОНОВ (СВАЙПЫ)
+    const canvasEl = document.getElementById('gameCanvas');
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    canvasEl.addEventListener('touchstart', function(event) {
+        touchStartX = event.changedTouches[0].screenX;
+        touchStartY = event.changedTouches[0].screenY;
+    }, {passive: false});
+
+    canvasEl.addEventListener('touchmove', function(event) {
+        // Запрещаем стандартную прокрутку экрана при свайпе по игровому полю
+        event.preventDefault(); 
+    }, {passive: false});
+
+    canvasEl.addEventListener('touchend', function(event) {
+        if (changingDirection) return;
+
+        let touchEndX = event.changedTouches[0].screenX;
+        let touchEndY = event.changedTouches[0].screenY;
+
+        let diffX = touchEndX - touchStartX;
+        let diffY = touchEndY - touchStartY;
+
+        // Игнорируем слишком маленькие сдвиги (случайные тапы)
+        if (Math.abs(diffX) < 15 && Math.abs(diffY) < 15) return;
+
+        const goingUp = direction === 'up';
+        const goingDown = direction === 'down';
+        const goingRight = direction === 'right';
+        const goingLeft = direction === 'left';
+
+        // Определяем, по какой оси свайп был сильнее
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            // Горизонтальный свайп
+            if (diffX > 0 && !goingLeft) { direction = 'right'; changingDirection = true; } 
+            else if (diffX < 0 && !goingRight) { direction = 'left'; changingDirection = true; }
+        } else {
+            // Вертикальный свайп
+            if (diffY > 0 && !goingUp) { direction = 'down'; changingDirection = true; } 
+            else if (diffY < 0 && !goingDown) { direction = 'up'; changingDirection = true; }
+        }
+    }, {passive: false});
+
 </script>
 </body>
 </html>
