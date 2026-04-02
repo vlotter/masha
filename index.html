@@ -15,7 +15,6 @@
     <h1>Через вселенные со студлидером</h1>
     <nav class="main-menu">
         <button class="btn" onclick="showScreen('screen-play')">Играть</button>
-        <button class="btn btn-disabled">Обучение</button>
         <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
     </nav>
 </div>
@@ -156,8 +155,10 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#2ea043';
-        snake.forEach(s => ctx.fillRect(s.x * gridSize, s.y * gridSize, gridSize - 1, gridSize - 1));
+        for (let i = 0; i < snake.length; i++) {
+            ctx.fillStyle = i === 0 ? '#df1515' : '#000000';
+            ctx.fillRect(snake[i].x * gridSize, snake[i].y * gridSize, gridSize - 1, gridSize - 1);
+        }
         ctx.fillStyle = '#f85149';
         ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 1, gridSize - 1);
     }
