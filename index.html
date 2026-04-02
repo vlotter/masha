@@ -125,7 +125,6 @@
         gameLoop = setInterval(update, 120);
     }
 
-    // ИЗМЕНЕНИЕ: Умный спавн еды
     function generateFood() {
         const canvas = document.getElementById('gameCanvas');
         let isFoodOnSnake = true;
@@ -184,6 +183,7 @@
         saveScore();
     }
 
+    // ИЗМЕНЕНИЕ: Сохранение до 5 лучших попыток одного пользователя
     async function saveScore() {
         if (!isVKInitialized) return;
         try {
@@ -200,18 +200,24 @@
                 date: date
             };
 
-            const idx = list.findIndex(p => p.id === userInfo.id);
-            if (idx > -1) {
-                if (list[idx].score < score) list[idx] = newEntry;
-            } else {
-                list.push(newEntry);
-            }
+            // Добавляем новую игру в список
+            list.push(newEntry);
+            
+            // Сортируем все результаты по убыванию очков (лучшие сверху)
             list.sort((a, b) => b.score - a.score);
+
+            // Оставляем не более 5 записей для каждого игрока
+            let userCounts = {};
+            list = list.filter(entry => {
+                userCounts[entry.id] = (userCounts[entry.id] || 0) + 1;
+                return userCounts[entry.id] <= 5;
+            });
+
+            // Сохраняем топ-50 записей глобально (чтобы память VK Storage не переполнялась)
             await vkBridge.send('VKWebAppStorageSet', { key: 'leaderboard_snake', value: JSON.stringify(list.slice(0, 50)) });
         } catch (e) { console.error("Ошибка сохранения:", e); }
     }
 
-    // ИЗМЕНЕНИЕ: Добавлен вывод даты вместе со временем в таблице
     async function loadLeaderboard() {
         const tbody = document.querySelector('#leaderboardTable tbody');
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Загрузка...</td></tr>';
