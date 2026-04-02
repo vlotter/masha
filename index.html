@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Через вселенные со студлидером</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- VK Bridge подключаем один раз -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+</head>
+<body>
+
+<!-- ЭКРАН 1: ГЛАВНОЕ МЕНЮ -->
+<div id="screen-main" class="container">
+    <h1>Через вселенные со студлидером</h1>
+    <nav class="main-menu">
+        <button class="btn" onclick="showScreen('screen-play')">Играть</button>
+        <button class="btn btn-disabled">Обучение</button>
+        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
+    </nav>
+</div>
+
+<!-- ЭКРАН 2: ВЫБОР ИГРЫ -->
+<div id="screen-play" class="container" style="display: none;">
+    <h1>Выберите игру</h1>
+    <nav class="game-selection">
+        <button class="btn" onclick="initGame()">Игра 1: Змейка</button>
+        <button class="btn btn-disabled">Игра 2 (Скоро)</button>
+        <button class="btn btn-disabled">Игра 3 (Скоро)</button>
+    </nav>
+    <button class="back-link" onclick="showScreen('screen-main')">Назад</button>
+</div>
+
+<!-- ЭКРАН 3: ИГРА ЗМЕЙКА -->
+<div id="screen-game" class="container game-container" style="display: none;">
+    <div id="loading-game" class="text-center">
+        <p>Загрузка данных VK...</p>
+    </div>
+    <div id="game-area" style="display: none;">
+        <div class="game-header">
+            <span><span id="player-name">Игрок</span></span>
+            <span>Счет: <span id="score">0</span></span>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="gameOver" style="display: none;">
+            <h2>Игра окончена!</h2>
+            <p>Ваш счет: <span id="finalScore"></span></p>
+            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
+            <button class="btn" onclick="initGame()">Играть снова</button>
+        </div>
+    </div>
+    <button class="back-link" id="btn-back-from-game" onclick="showScreen('screen-play')">Назад</button>
+</div>
+
+<!-- ЭКРАН 4: ТАБЛИЦА ЛИДЕРОВ -->
+<div id="screen-leaderboard" class="container" style="display: none;">
+    <h1>Таблица лидеров</h1>
+    <div class="table-container">
+        <table id="leaderboardTable">
+            <thead>
+            <tr>
+                <th>№</th>
+                <th>Фото</th>
+                <th>Игрок</th>
+                <th>Очки</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr><td colspan="4" style="text-align:center;">Загрузка...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <button class="back-link" onclick="showScreen('screen-main')">Назад на главную</button>
+</div>
+
+<script>
+    // --- ПЕРЕМЕННЫЕ ---
+    let userInfo = { first_name: 'Игрок', last_name: '', photo_100: '' };
+    let isVKInitialized = false;
+    const gridSize = 20;
+    let snake, food, direction, score, gameLoop;
+
+    // --- ЛОГИКА ЭКРАНОВ ---
+    function showScreen(screenId) {
+        document.querySelectorAll('body > div').forEach(div => div.style.display = 'none');
+        document.getElementById(screenId).style.display = 'block';
+        if (gameLoop) clearInterval(gameLoop); // Остановить игру при уходе
+    }
+
+    // --- ИНИЦИАЛИЗАЦИЯ VK ---
+    async function startApp() {
+        try {
+            await vkBridge.send('VKWebAppInit');
+            isVKInitialized = true;
+            userInfo = await vkBridge.send('VKWebAppGetUserInfo');
+        } catch (e) {
+            console.log("Запущено вне VK или ошибка", e);
+        }
+    }
+    startApp();
+
+    // --- ЛОГИКА ИГРЫ ---
+    function initGame() {
+        showScreen('screen-game');
+        document.getElementById('loading-game').style.display = 'none';
+        document.getElementById('game-area').style.display = 'block';
+        document.getElementById('gameOver').style.display = 'none';
+        document.getElementById('gameCanvas').style.display = 'block';
+        document.getElementById('player-name').textContent = userInfo.first_name;
+
+        const canvas = document.getElementById('gameCanvas');
+        const containerWidth = document.getElementById('game-area').clientWidth;
+        canvas.width = Math.floor(containerWidth / gridSize) * gridSize;
+        canvas.height = canvas.width;
+
+        snake = [{ x: 10, y: 10 }];
+        direction = 'right';
+        score = 0;
+        document.getElementById('score').textContent = score;
+        generateFood();
+        gameLoop = setInterval(update, 120);
+    }
+
+    function generateFood() {
+        const canvas = document.getElementById('gameCanvas');
+        food = {
+            x: Math.floor(Math.random() * (canvas.width / gridSize)),
+            y: Math.floor(Math.random() * (canvas.height / gridSize))
+        };
+    }
+
+    function update() {
+        const head = { x: snake[0].x, y: snake[0].y };
+        if (direction === 'right') head.x++;
+        if (direction === 'left') head.x--;
+        if (direction === 'up') head.y--;
+        if (direction === 'down') head.y++;
+
+        const canvas = document.getElementById('gameCanvas');
+        if (head.x < 0 || head.x * gridSize >= canvas.width || head.y < 0 || head.y * gridSize >= canvas.height || snake.some((seg, i) => i !== 0 && seg.x === head.x && seg.y === head.y)) {
+            return endGame();
+        }
+
+        snake.unshift(head);
+        if (head.x === food.x && head.y === food.y) {
+            score++;
+            document.getElementById('score').textContent = score;
+            generateFood();
+        } else {
+            snake.pop();
+        }
+        draw();
+    }
+
+    function draw() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#2ea043';
+        snake.forEach(s => ctx.fillRect(s.x * gridSize, s.y * gridSize, gridSize - 1, gridSize - 1));
+        ctx.fillStyle = '#f85149';
+        ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 1, gridSize - 1);
+    }
+
+    function endGame() {
+        clearInterval(gameLoop);
+        document.getElementById('finalScore').textContent = score;
+        document.getElementById('gameOver').style.display = 'block';
+        document.getElementById('gameCanvas').style.display = 'none';
+        saveScore();
+    }
+
+    async function saveScore() {
+        if (!isVKInitialized) return;
+        try {
+            const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['leaderboard_snake'] });
+            let list = data.keys[0].value ? JSON.parse(data.keys[0].value) : [];
+
+            const newEntry = {
+                id: userInfo.id,
+                name: `${userInfo.first_name} ${userInfo.last_name}`,
+                photo: userInfo.photo_100,
+                score: score
+            };
+
+            const idx = list.findIndex(p => p.id === userInfo.id);
+            if (idx > -1) {
+                if (list[idx].score < score) list[idx] = newEntry;
+            } else {
+                list.push(newEntry);
+            }
+            list.sort((a, b) => b.score - a.score);
+            await vkBridge.send('VKWebAppStorageSet', { key: 'leaderboard_snake', value: JSON.stringify(list.slice(0, 50)) });
+        } catch (e) { console.error(e); }
+    }
+
+    async function loadLeaderboard() {
+        const tbody = document.querySelector('#leaderboardTable tbody');
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Загрузка...</td></tr>';
+        if (!isVKInitialized) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">VK не инициализирован</td></tr>';
+            return;
+        }
+        try {
+            const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['leaderboard_snake'] });
+            if (!data.keys[0].value) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Рекордов пока нет</td></tr>';
+                return;
+            }
+            const list = JSON.parse(data.keys[0].value);
+            tbody.innerHTML = list.map((e, i) => `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td><img src="${e.photo}" style="width:30px; border-radius:50%"></td>
+                        <td>${e.name}</td>
+                        <td>${e.score}</td>
+                    </tr>
+                `).join('');
+        } catch (e) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Ошибка загрузки</td></tr>'; }
+    }
+
+    // --- УПРАВЛЕНИЕ ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'a') if (direction !== 'right') direction = 'left';
+        if (e.key === 'ArrowUp' || e.key === 'w') if (direction !== 'down') direction = 'up';
+        if (e.key === 'ArrowRight' || e.key === 'd') if (direction !== 'left') direction = 'right';
+        if (e.key === 'ArrowDown' || e.key === 's') if (direction !== 'up') direction = 'down';
+    });
+</script>
+</body>
+</html>
