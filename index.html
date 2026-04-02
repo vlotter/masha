@@ -61,7 +61,7 @@
                 <th>Фото</th>
                 <th>Игрок</th>
                 <th>Очки</th>
-                <th>Время</th>
+                <th>Дата и время</th>
             </tr>
             </thead>
             <tbody>
@@ -69,7 +69,6 @@
             </tbody>
         </table>
     </div>
-    <!-- Новая кнопка очистки -->
     <button class="btn" style="background: #555; margin-top: 20px;" onclick="clearLeaderboard()">Очистить таблицу</button>
     <button class="back-link" onclick="showScreen('screen-main')">Назад на главную</button>
 </div>
@@ -126,12 +125,20 @@
         gameLoop = setInterval(update, 120);
     }
 
+    // ИЗМЕНЕНИЕ: Умный спавн еды
     function generateFood() {
         const canvas = document.getElementById('gameCanvas');
-        food = {
-            x: Math.floor(Math.random() * (canvas.width / gridSize)),
-            y: Math.floor(Math.random() * (canvas.height / gridSize))
-        };
+        let isFoodOnSnake = true;
+        
+        while (isFoodOnSnake) {
+            food = {
+                x: Math.floor(Math.random() * (canvas.width / gridSize)),
+                y: Math.floor(Math.random() * (canvas.height / gridSize))
+            };
+            
+            // Проверяем, не совпадают ли координаты еды с любым из сегментов змейки
+            isFoodOnSnake = snake.some(segment => segment.x === food.x && segment.y === food.y);
+        }
     }
 
     function update() {
@@ -180,7 +187,7 @@
     async function saveScore() {
         if (!isVKInitialized) return;
         try {
-            const { time, date } = getFormattedDate(); // Исправлено: получение даты и времени
+            const { time, date } = getFormattedDate(); 
             const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['leaderboard_snake'] });
             let list = data.keys[0].value ? JSON.parse(data.keys[0].value) : [];
 
@@ -204,6 +211,7 @@
         } catch (e) { console.error("Ошибка сохранения:", e); }
     }
 
+    // ИЗМЕНЕНИЕ: Добавлен вывод даты вместе со временем в таблице
     async function loadLeaderboard() {
         const tbody = document.querySelector('#leaderboardTable tbody');
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Загрузка...</td></tr>';
@@ -224,19 +232,18 @@
                     <td><img src="${e.photo}" style="width:30px; border-radius:50%"></td>
                     <td>${e.name}</td>
                     <td>${e.score}</td>
-                    <td>${e.time || ''}</td>
+                    <td><span style="font-size: 0.9em; color: #aaa;">${e.date || ''}</span><br>${e.time || ''}</td>
                 </tr>
             `).join('');
         } catch (e) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Ошибка загрузки</td></tr>'; }
     }
 
-    // Функция очистки таблицы
     async function clearLeaderboard() {
         if (!confirm("Вы уверены, что хотите очистить таблицу рекордов?")) return;
         if (!isVKInitialized) return;
         try {
             await vkBridge.send('VKWebAppStorageSet', { key: 'leaderboard_snake', value: '' });
-            loadLeaderboard(); // Обновляем вид
+            loadLeaderboard(); 
         } catch (e) { console.error("Ошибка очистки:", e); }
     }
 
