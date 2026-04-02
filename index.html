@@ -221,11 +221,17 @@
     }
 
     // --- УПРАВЛЕНИЕ ---
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft' || e.key === 'a') if (direction !== 'right') direction = 'left';
-        if (e.key === 'ArrowUp' || e.key === 'w') if (direction !== 'down') direction = 'up';
-        if (e.key === 'ArrowRight' || e.key === 'd') if (direction !== 'left') direction = 'right';
-        if (e.key === 'ArrowDown' || e.key === 's') if (direction !== 'up') direction = 'down';
+    document.addEventListener('keydown', (event) => {
+        const keyPressed = event.keyCode;
+        const goingUp = direction === 'up';
+        const goingDown = direction === 'down';
+        const goingRight = direction === 'right';
+        const goingLeft = direction === 'left';
+
+        if ((keyPressed === 37 || keyPressed === 65) && !goingRight) direction = 'left'; // A
+        if ((keyPressed === 38 || keyPressed === 87) && !goingDown) direction = 'up';   // W
+        if ((keyPressed === 39 || keyPressed === 68) && !goingLeft) direction = 'right';// D
+        if ((keyPressed === 40 || keyPressed === 83) && !goingUp) direction = 'down'; // S
     });
 </script>
 </body>
