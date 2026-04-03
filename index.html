@@ -27,12 +27,12 @@
             opacity: 0.3;
             white-space: pre; 
             text-align: center;
-            display: none; /* Скрыто по умолчанию */
+            display: none; 
         }
         .tutorial-swipe {
             width: 70px;
             animation: swipeUpAnim 1.5s ease-in-out infinite; 
-            display: none; /* Скрыто по умолчанию */
+            display: none; 
         }
         @keyframes swipeUpAnim {
             0% { transform: translateY(30px); opacity: 0; }
@@ -128,6 +128,9 @@
     
     let snake, food, direction, score, gameLoop, changingDirection, tutorialTimeout;
 
+    // ФЛАГ ДЛЯ ОПРЕДЕЛЕНИЯ ПЕРВОГО ЗАПУСКА (сбрасывается при обновлении страницы)
+    let isFirstLaunchInSession = true;
+
     function showScreen(screenId) {
         document.querySelectorAll('body > div').forEach(div => div.style.display = 'none');
         document.getElementById(screenId).style.display = 'block';
@@ -175,32 +178,39 @@
         document.getElementById('score').textContent = score;
         generateFood();
         
-        // --- ЛОГИКА ПОКАЗА ПОДСКАЗКИ В ЗАВИСИМОСТИ ОТ УСТРОЙСТВА ---
+        // --- ЛОГИКА ПОДСКАЗКИ (ТОЛЬКО ДЛЯ ПЕРВОГО ЗАПУСКА) ---
         const tutorial = document.getElementById('tutorial-overlay');
-        const tutKeys = document.getElementById('tut-keys');
-        const tutSwipe = document.getElementById('tut-swipe');
         
-        // Проверка на мобильное устройство
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isFirstLaunchInSession) {
+            const tutKeys = document.getElementById('tut-keys');
+            const tutSwipe = document.getElementById('tut-swipe');
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        if (isMobile) {
-            tutKeys.style.display = 'none';
-            tutSwipe.style.display = 'block';
+            if (isMobile) {
+                tutKeys.style.display = 'none';
+                tutSwipe.style.display = 'block';
+            } else {
+                tutKeys.style.display = 'block';
+                tutSwipe.style.display = 'none';
+            }
+
+            tutorial.style.display = 'flex';
+            tutorial.style.opacity = '1';
+            
+            if (tutorialTimeout) clearTimeout(tutorialTimeout);
+            tutorialTimeout = setTimeout(() => {
+                tutorial.style.opacity = '0';
+                setTimeout(() => {
+                    tutorial.style.display = 'none';
+                }, 1000);
+            }, 3000);
+
+            // Помечаем, что первый запуск состоялся
+            isFirstLaunchInSession = false;
         } else {
-            tutKeys.style.display = 'block';
-            tutSwipe.style.display = 'none';
+            // Если запуск не первый — скрываем подсказку сразу
+            tutorial.style.display = 'none';
         }
-
-        tutorial.style.display = 'flex';
-        tutorial.style.opacity = '1';
-        
-        if (tutorialTimeout) clearTimeout(tutorialTimeout);
-        tutorialTimeout = setTimeout(() => {
-            tutorial.style.opacity = '0';
-            setTimeout(() => {
-                tutorial.style.display = 'none';
-            }, 1000);
-        }, 3000);
 
         gameLoop = setInterval(update, 120);
     }
