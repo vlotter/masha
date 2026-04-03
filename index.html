@@ -16,24 +16,23 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            transition: opacity 1s ease; /* Плавное растворение за 1 секунду */
+            transition: opacity 1s ease; /* Плавное растворение */
             z-index: 10;
         }
         .tutorial-text {
-            font-family: monospace; /* Моноширинный шрифт, чтобы W стояла ровно над S */
+            font-family: monospace;
             font-size: 3.5rem;
             font-weight: bold;
             color: #000;
             opacity: 0.3; /* Прозрачность 30% */
-            white-space: pre; /* Сохраняем пробелы для выравнивания */
+            white-space: pre; 
             text-align: center;
             margin-bottom: 20px;
         }
         .tutorial-swipe {
             width: 70px;
-            animation: swipeUpAnim 1.5s ease-in-out infinite; /* Зацикленная анимация движения пальца */
+            animation: swipeUpAnim 1.5s ease-in-out infinite; 
         }
-        /* Анимация: уезжает вверх и растворяется */
         @keyframes swipeUpAnim {
             0% { transform: translateY(30px); opacity: 0; }
             20% { opacity: 0.4; }
@@ -75,12 +74,11 @@
             <span>Счет: <span id="score">0</span></span>
         </div>
         
-        <!-- ИЗМЕНЕНИЕ: Обернули canvas для позиционирования подсказки -->
         <div style="position: relative; width: 100%;">
             <canvas id="gameCanvas"></canvas>
             
             <!-- ТУТОРИАЛ (ПОДСКАЗКА) -->
-            <div id="tutorial-overlay">
+            <div id="tutorial-overlay" style="display: none;">
                 <div class="tutorial-text">  W  <br>A S D</div>
                 <img src="укащательный.png" class="tutorial-swipe" alt="Свайп вверх">
             </div>
@@ -127,7 +125,6 @@
     let isVKInitialized = false;
     const gridSize = 20;
     
-    // ИЗМЕНЕНИЕ: Добавили переменную tutorialTimeout
     let snake, food, direction, score, gameLoop, changingDirection, tutorialTimeout;
 
     function showScreen(screenId) {
@@ -164,7 +161,9 @@
         document.getElementById('player-name').textContent = userInfo.first_name;
 
         const canvas = document.getElementById('gameCanvas');
-        const containerWidth = document.getElementById('game-area').clientWidth;
+        let containerWidth = document.getElementById('game-area').clientWidth;
+        if (containerWidth === 0) containerWidth = window.innerWidth - 40; // Запасной вариант для мобилок
+        
         canvas.width = Math.floor(containerWidth / gridSize) * gridSize;
         canvas.height = canvas.width;
 
@@ -175,7 +174,7 @@
         document.getElementById('score').textContent = score;
         generateFood();
         
-        // ИЗМЕНЕНИЕ: Запуск и скрытие подсказки
+        // ПОКАЗ ПОДСКАЗКИ
         const tutorial = document.getElementById('tutorial-overlay');
         tutorial.style.display = 'flex';
         tutorial.style.opacity = '1';
@@ -184,9 +183,7 @@
         tutorialTimeout = setTimeout(() => {
             tutorial.style.opacity = '0'; // Запускаем растворение
             setTimeout(() => {
-                if (tutorial.style.opacity === '0') {
-                    tutorial.style.display = 'none'; // Убираем из документа
-                }
+                tutorial.style.display = 'none'; // Полностью убираем
             }, 1000);
         }, 3000); // 3 секунды игры
 
@@ -245,7 +242,8 @@
 
     function endGame() {
         clearInterval(gameLoop);
-        // Скрываем подсказку моментально, если игрок проиграл слишком быстро
+        
+        // Экстренно скрываем подсказку, если игрок проиграл очень быстро
         if (tutorialTimeout) clearTimeout(tutorialTimeout);
         document.getElementById('tutorial-overlay').style.display = 'none';
 
@@ -323,7 +321,7 @@
         } catch (e) { console.error("Ошибка очистки:", e); }
     }
 
-    // УПРАВЛЕНИЕ: КЛАВИАТУРА
+    // УПРАВЛЕНИЕ КЛАВИАТУРОЙ
     document.addEventListener('keydown', (event) => {
         if (changingDirection) return;
 
@@ -336,4 +334,51 @@
         if ((keyPressed === 37 || keyPressed === 65) && !goingRight) { direction = 'left'; changingDirection = true; }
         if ((keyPressed === 38 || keyPressed === 87) && !goingDown) { direction = 'up'; changingDirection = true; }
         if ((keyPressed === 39 || keyPressed === 68) && !goingLeft) { direction = 'right'; changingDirection = true; }
-        if ((keyPressed === 40 || keyPressed === 83) && !goingUp) { direction = 'down'; changingDirectio
+        if ((keyPressed === 40 || keyPressed === 83) && !goingUp) { direction = 'down'; changingDirection = true; }
+    });
+
+    // УПРАВЛЕНИЕ СВАЙПАМИ
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener('touchstart', function(event) {
+        if (document.getElementById('screen-game').style.display !== 'block') return;
+        touchStartX = event.changedTouches[0].screenX;
+        touchStartY = event.changedTouches[0].screenY;
+    }, {passive: false});
+
+    document.addEventListener('touchmove', function(event) {
+        if (document.getElementById('screen-game').style.display === 'block') {
+            event.preventDefault(); 
+        }
+    }, {passive: false});
+
+    document.addEventListener('touchend', function(event) {
+        if (document.getElementById('screen-game').style.display !== 'block') return;
+        if (changingDirection) return;
+
+        let touchEndX = event.changedTouches[0].screenX;
+        let touchEndY = event.changedTouches[0].screenY;
+
+        let diffX = touchEndX - touchStartX;
+        let diffY = touchEndY - touchStartY;
+
+        if (Math.abs(diffX) < 15 && Math.abs(diffY) < 15) return;
+
+        const goingUp = direction === 'up';
+        const goingDown = direction === 'down';
+        const goingRight = direction === 'right';
+        const goingLeft = direction === 'left';
+
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            if (diffX > 0 && !goingLeft) { direction = 'right'; changingDirection = true; } 
+            else if (diffX < 0 && !goingRight) { direction = 'left'; changingDirection = true; }
+        } else {
+            if (diffY > 0 && !goingUp) { direction = 'down'; changingDirection = true; } 
+            else if (diffY < 0 && !goingDown) { direction = 'up'; changingDirection = true; }
+        }
+    }, {passive: false});
+
+</script>
+</body>
+</html>
