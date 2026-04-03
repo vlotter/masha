@@ -14,7 +14,7 @@
     <h1>Через вселенные со студлидером</h1>
     <nav class="main-menu">
         <button class="btn" onclick="showScreen('screen-play')">Играть</button>
-        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
+        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидера</button>
     </nav>
 </div>
 
@@ -44,21 +44,21 @@
         <div id="gameOver" style="display: none;">
             <h2>Игра окончена!</h2>
             <p>Ваш счет: <span id="finalScore"></span></p>
-            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
+            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидера</button>
             <button class="btn" onclick="initGame()">Играть снова</button>
         </div>
     </div>
     <button class="back-link" id="btn-back-from-game" onclick="showScreen('screen-play')">Назад</button>
 </div>
 
-<!-- ЭКРАН 4: ТАБЛИЦА ЛИДЕРОВ -->
+<!-- ЭКРАН 4: ТАБЛИЦА ЛИДЕРА -->
 <div id="screen-leaderboard" class="container" style="display: none;">
     <div style="text-align: center; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
         <img id="lb-user-photo" src="" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; display: none;">
         <span id="lb-user-name" style="font-size: 1.2em; font-weight: bold;"></span>
     </div>
 
-    <h1>Таблица лидеров</h1>
+    <h1>Таблица лидера</h1>
     <div class="table-container">
         <table id="leaderboardTable">
             <thead>
