@@ -56,6 +56,6 @@ h1 { font-family: 'Rhythmic RUS', sans-serif; color: #ffffff; }
     text-decoration: underline;
 }
 
-canvas { background: #c0908e ; width: 100%; height: auto; border: 2px solid #58a6ff; }
+canvas { background: #a59daf ; width: 100%; height: auto; border: 2px solid #ff0000; }
 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
 th, td { border: 1px solid #444; padding: 8px; text-align: left; }
