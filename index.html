@@ -6,6 +6,41 @@
     <title>Через вселенные со студлидером</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <style>
+        /* СТИЛИ ДЛЯ АНИМИРОВАННОЙ ПОДСКАЗКИ */
+        #tutorial-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; /* Пропускаем клики и свайпы сквозь этот слой */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s ease; /* Плавное растворение за 1 секунду */
+            z-index: 10;
+        }
+        .tutorial-text {
+            font-family: monospace; /* Моноширинный шрифт, чтобы W стояла ровно над S */
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #000;
+            opacity: 0.3; /* Прозрачность 30% */
+            white-space: pre; /* Сохраняем пробелы для выравнивания */
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .tutorial-swipe {
+            width: 70px;
+            animation: swipeUpAnim 1.5s ease-in-out infinite; /* Зацикленная анимация движения пальца */
+        }
+        /* Анимация: уезжает вверх и растворяется */
+        @keyframes swipeUpAnim {
+            0% { transform: translateY(30px); opacity: 0; }
+            20% { opacity: 0.4; }
+            80% { opacity: 0.4; }
+            100% { transform: translateY(-40px); opacity: 0; }
+        }
+    </style>
 </head>
 <body>
 
@@ -14,7 +49,7 @@
     <h1>Через вселенные со студлидером</h1>
     <nav class="main-menu">
         <button class="btn" onclick="showScreen('screen-play')">Играть</button>
-        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидера</button>
+        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
     </nav>
 </div>
 
@@ -39,26 +74,36 @@
             <span><span id="player-name">Игрок</span></span>
             <span>Счет: <span id="score">0</span></span>
         </div>
-        <!-- ИЗМЕНЕНИЕ: Убрали touch-action: none отсюда, так как теперь контролируем это через JS для всего документа -->
-        <canvas id="gameCanvas"></canvas>
+        
+        <!-- ИЗМЕНЕНИЕ: Обернули canvas для позиционирования подсказки -->
+        <div style="position: relative; width: 100%;">
+            <canvas id="gameCanvas"></canvas>
+            
+            <!-- ТУТОРИАЛ (ПОДСКАЗКА) -->
+            <div id="tutorial-overlay">
+                <div class="tutorial-text">  W  <br>A S D</div>
+                <img src="укащательный.png" class="tutorial-swipe" alt="Свайп вверх">
+            </div>
+        </div>
+
         <div id="gameOver" style="display: none;">
             <h2>Игра окончена!</h2>
             <p>Ваш счет: <span id="finalScore"></span></p>
-            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидера</button>
+            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидеров</button>
             <button class="btn" onclick="initGame()">Играть снова</button>
         </div>
     </div>
     <button class="back-link" id="btn-back-from-game" onclick="showScreen('screen-play')">Назад</button>
 </div>
 
-<!-- ЭКРАН 4: ТАБЛИЦА ЛИДЕРА -->
+<!-- ЭКРАН 4: ТАБЛИЦА ЛИДЕРОВ -->
 <div id="screen-leaderboard" class="container" style="display: none;">
     <div style="text-align: center; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
         <img id="lb-user-photo" src="" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; display: none;">
         <span id="lb-user-name" style="font-size: 1.2em; font-weight: bold;"></span>
     </div>
 
-    <h1>Таблица лидера</h1>
+    <h1>Таблица лидеров</h1>
     <div class="table-container">
         <table id="leaderboardTable">
             <thead>
@@ -82,7 +127,8 @@
     let isVKInitialized = false;
     const gridSize = 20;
     
-    let snake, food, direction, score, gameLoop, changingDirection;
+    // ИЗМЕНЕНИЕ: Добавили переменную tutorialTimeout
+    let snake, food, direction, score, gameLoop, changingDirection, tutorialTimeout;
 
     function showScreen(screenId) {
         document.querySelectorAll('body > div').forEach(div => div.style.display = 'none');
@@ -128,6 +174,22 @@
         score = 0;
         document.getElementById('score').textContent = score;
         generateFood();
+        
+        // ИЗМЕНЕНИЕ: Запуск и скрытие подсказки
+        const tutorial = document.getElementById('tutorial-overlay');
+        tutorial.style.display = 'flex';
+        tutorial.style.opacity = '1';
+        
+        if (tutorialTimeout) clearTimeout(tutorialTimeout);
+        tutorialTimeout = setTimeout(() => {
+            tutorial.style.opacity = '0'; // Запускаем растворение
+            setTimeout(() => {
+                if (tutorial.style.opacity === '0') {
+                    tutorial.style.display = 'none'; // Убираем из документа
+                }
+            }, 1000);
+        }, 3000); // 3 секунды игры
+
         gameLoop = setInterval(update, 120);
     }
 
@@ -177,12 +239,16 @@
             ctx.fillStyle = i === 0 ? '#df1515' : '#000000';
             ctx.fillRect(snake[i].x * gridSize, snake[i].y * gridSize, gridSize - 1, gridSize - 1);
         }
-        ctx.fillStyle = '#ffa000';
+        ctx.fillStyle = '#f85149';
         ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 1, gridSize - 1);
     }
 
     function endGame() {
         clearInterval(gameLoop);
+        // Скрываем подсказку моментально, если игрок проиграл слишком быстро
+        if (tutorialTimeout) clearTimeout(tutorialTimeout);
+        document.getElementById('tutorial-overlay').style.display = 'none';
+
         document.getElementById('finalScore').textContent = score;
         document.getElementById('gameOver').style.display = 'block';
         document.getElementById('gameCanvas').style.display = 'none';
@@ -270,60 +336,4 @@
         if ((keyPressed === 37 || keyPressed === 65) && !goingRight) { direction = 'left'; changingDirection = true; }
         if ((keyPressed === 38 || keyPressed === 87) && !goingDown) { direction = 'up'; changingDirection = true; }
         if ((keyPressed === 39 || keyPressed === 68) && !goingLeft) { direction = 'right'; changingDirection = true; }
-        if ((keyPressed === 40 || keyPressed === 83) && !goingUp) { direction = 'down'; changingDirection = true; }
-    });
-
-    // ИЗМЕНЕНИЕ: УПРАВЛЕНИЕ ДЛЯ СМАРТФОНОВ (СВАЙПЫ ПО ВСЕМУ ЭКРАНУ)
-    let touchStartX = 0;
-    let touchStartY = 0;
-
-    // Вешаем слушатели на весь document, а не только на canvas
-    document.addEventListener('touchstart', function(event) {
-        // Проверяем, что мы находимся на экране игры
-        if (document.getElementById('screen-game').style.display !== 'block') return;
-        
-        touchStartX = event.changedTouches[0].screenX;
-        touchStartY = event.changedTouches[0].screenY;
-    }, {passive: false});
-
-    document.addEventListener('touchmove', function(event) {
-        // Запрещаем прокрутку экрана ТОЛЬКО во время игры
-        if (document.getElementById('screen-game').style.display === 'block') {
-            event.preventDefault(); 
-        }
-    }, {passive: false});
-
-    document.addEventListener('touchend', function(event) {
-        // Игнорируем свайпы, если мы не в игре
-        if (document.getElementById('screen-game').style.display !== 'block') return;
-        if (changingDirection) return;
-
-        let touchEndX = event.changedTouches[0].screenX;
-        let touchEndY = event.changedTouches[0].screenY;
-
-        let diffX = touchEndX - touchStartX;
-        let diffY = touchEndY - touchStartY;
-
-        // Игнорируем случайные микро-тапы
-        if (Math.abs(diffX) < 15 && Math.abs(diffY) < 15) return;
-
-        const goingUp = direction === 'up';
-        const goingDown = direction === 'down';
-        const goingRight = direction === 'right';
-        const goingLeft = direction === 'left';
-
-        // Логика поворота змейки по свайпу
-        if (Math.abs(diffX) > Math.abs(diffY)) {
-            // Горизонтальный свайп
-            if (diffX > 0 && !goingLeft) { direction = 'right'; changingDirection = true; } 
-            else if (diffX < 0 && !goingRight) { direction = 'left'; changingDirection = true; }
-        } else {
-            // Вертикальный свайп
-            if (diffY > 0 && !goingUp) { direction = 'down'; changingDirection = true; } 
-            else if (diffY < 0 && !goingDown) { direction = 'up'; changingDirection = true; }
-        }
-    }, {passive: false});
-
-</script>
-</body>
-</html>
+        if ((keyPressed === 40 || keyPressed === 83) && !goingUp) { direction = 'down'; changingDirectio
