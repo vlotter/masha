@@ -117,7 +117,6 @@
             </tbody>
         </table>
     </div>
-    <button class="btn" style="background: #555; margin-top: 20px;" onclick="clearLeaderboard()">Очистить таблицу</button>
     <button class="back-link" onclick="showScreen('screen-main')">Назад на главную</button>
 </div>
 
@@ -332,15 +331,6 @@
                 </tr>
             `).join('');
         } catch (e) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Ошибка загрузки</td></tr>'; }
-    }
-
-    async function clearLeaderboard() {
-        if (!confirm("Вы уверены, что хотите очистить таблицу рекордов?")) return;
-        if (!isVKInitialized) return;
-        try {
-            await vkBridge.send('VKWebAppStorageSet', { key: 'leaderboard_snake', value: '' });
-            loadLeaderboard(); 
-        } catch (e) { console.error("Ошибка очистки:", e); }
     }
 
     // УПРАВЛЕНИЕ КЛАВИАТУРОЙ
