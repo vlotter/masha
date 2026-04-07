@@ -7,8 +7,7 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <style>
-        /* СТИЛИ ДЛЯ АНИМИРОВАННОЙ ПОДСКАЗКИ */
-        #tutorial-overlay {
+        .tutorial-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
@@ -25,372 +24,319 @@
             font-weight: bold;
             color: #000;
             opacity: 0.3;
-            white-space: pre; 
+            white-space: pre;
             text-align: center;
-            display: none; 
+            display: none;
         }
-        .tutorial-swipe {
-            width: 70px;
-            animation: swipeUpAnim 1.5s ease-in-out infinite; 
-            display: none; 
+        .tabs { display: flex; gap: 10px; margin-bottom: 10px; }
+        .tab-btn {
+            flex: 1; padding: 8px; margin: 0;
+            background: #333; border: 1px solid #555; color: #fff;
+            border-radius: 8px; cursor: pointer;
         }
-        @keyframes swipeUpAnim {
-            0% { transform: translateY(30px); opacity: 0; }
-            20% { opacity: 0.4; }
-            80% { opacity: 0.4; }
-            100% { transform: translateY(-40px); opacity: 0; }
-        }
+        .tab-btn.active { background: #f21511; border-color: #f21511; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<!-- ЭКРАН 1: ГЛАВНОЕ МЕНЮ -->
 <div id="screen-main" class="container">
     <h1>Через вселенные со студлидером</h1>
     <nav class="main-menu">
         <button class="btn" onclick="showScreen('screen-play')">Играть</button>
-        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидера</button>
+        <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard('snake');">Таблица лидера</button>
     </nav>
 </div>
 
-<!-- ЭКРАН 2: ВЫБОР ИГРЫ -->
 <div id="screen-play" class="container" style="display: none;">
     <h1>Выберите игру</h1>
     <nav class="game-selection">
         <button class="btn" onclick="initGame()">Игра 1: Змейка</button>
-        <button class="btn btn-disabled">Игра 2 (Скоро)</button>
+        <button class="btn" onclick="initFlappy()">Игра 2: Птичка</button>
         <button class="btn btn-disabled">Игра 3 (Скоро)</button>
     </nav>
     <button class="back-link" onclick="showScreen('screen-main')">Назад</button>
 </div>
 
-<!-- ЭКРАН 3: ИГРА ЗМЕЙКА -->
 <div id="screen-game" class="container game-container" style="display: none;">
-    <div id="loading-game" class="text-center">
-        <p>Загрузка данных VK...</p>
-    </div>
-    <div id="game-area" style="display: none;">
-        <div class="game-header">
-            <span><span id="player-name">Игрок</span></span>
-            <span>Счет: <span id="score">0</span></span>
-        </div>
-        
+    <div id="game-area">
+        <div class="game-header"><span><span id="player-name">Игрок</span></span><span>Счет: <span id="score">0</span></span></div>
         <div style="position: relative; width: 100%;">
             <canvas id="gameCanvas"></canvas>
-            
-            <!-- ТУТОРИАЛ (ПОДСКАЗКА) -->
-            <div id="tutorial-overlay" style="display: none;">
-                <div id="tut-keys" class="tutorial-text">  W  <br>A S D</div>
-                <img id="tut-swipe" src="укащательный.png" class="tutorial-swipe" alt="Свайп вверх">
-            </div>
         </div>
-
         <div id="gameOver" style="display: none;">
             <h2>Игра окончена!</h2>
             <p>Ваш счет: <span id="finalScore"></span></p>
-            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard();">Таблица лидера</button>
-            <button class="btn" onclick="initGame()">Играть снова</button>
+            <button class="btn" onclick="initGame()">Сначала</button>
+            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard('snake');">Таблица лидера</button>
+            <button class="btn" style="background:#555" onclick="showScreen('screen-main')">Меню</button>
         </div>
     </div>
-    <button class="back-link" id="btn-back-from-game" onclick="showScreen('screen-play')">Назад</button>
 </div>
 
-<!-- ЭКРАН 4: ТАБЛИЦА лидера -->
+<div id="screen-flappy" class="container game-container" style="display: none;">
+    <div id="flappy-area">
+        <div class="game-header"><span><span id="player-name-flappy">Игрок</span></span><span>Счет: <span id="flappy-score">0</span></span></div>
+        <div style="position: relative; width: 100%;">
+            <canvas id="flappyCanvas" style="border-radius: 8px; border: 2px solid #58a6ff;"></canvas>
+            <div id="tutorial-overlay-flappy" class="tutorial-overlay" style="display: none;">
+                <div class="tutorial-text" style="font-size: 2rem; display: block; opacity: 0.8; color: white; text-shadow: 2px 2px 4px #000;">КЛИК / ПРОБЕЛ</div>
+            </div>
+        </div>
+        <div id="flappyGameOver" style="display: none;">
+            <h2>Игра окончена!</h2>
+            <p>Ваш счет: <span id="flappyFinalScore"></span></p>
+            <button class="btn" onclick="initFlappy()">Сначала</button>
+            <button class="btn" onclick="showScreen('screen-leaderboard'); loadLeaderboard('flappy');">Таблица лидера</button>
+            <button class="btn" style="background:#555" onclick="showScreen('screen-main')">Меню</button>
+        </div>
+    </div>
+</div>
+
 <div id="screen-leaderboard" class="container" style="display: none;">
     <div style="text-align: center; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 10px;">
         <img id="lb-user-photo" src="" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; display: none;">
         <span id="lb-user-name" style="font-size: 1.2em; font-weight: bold;"></span>
     </div>
-
-    <h1>Таблица лидера</h1>
-    <div class="table-container">
-        <table id="leaderboardTable">
-            <thead>
-            <tr>
-                <th>№</th>
-                <th>Очки</th>
-                <th>Дата и время</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr><td colspan="3" style="text-align:center;">Загрузка...</td></tr>
-            </tbody>
-        </table>
+    <div class="tabs">
+        <button id="tab-snake" class="tab-btn active" onclick="loadLeaderboard('snake')">Змейка</button>
+        <button id="tab-flappy" class="tab-btn" onclick="loadLeaderboard('flappy')">Птичка</button>
     </div>
-    <button class="back-link" onclick="showScreen('screen-main')">Назад на главную</button>
+    <div class="table-container"><table id="leaderboardTable"><thead><tr><th>№</th><th>Очки</th><th>Дата</th></tr></thead><tbody></tbody></table></div>
+    <button class="back-link" onclick="showScreen('screen-main')">В меню</button>
 </div>
 
 <script>
     let userInfo = { id: 0, first_name: 'Игрок', last_name: '', photo_100: '' };
-    let isVKInitialized = false;
-    const gridSize = 20;
-    
-    let snake, food, direction, score, gameLoop, changingDirection, tutorialTimeout;
+    let isVKInitialized = false, currentGame = '', isFirstLaunchInSession = true;
 
-    // ФЛАГ ДЛЯ ОПРЕДЕЛЕНИЯ ПЕРВОГО ЗАПУСКА (сбрасывается при обновлении страницы)
-    let isFirstLaunchInSession = true;
+    const bgImg = new Image(); bgImg.src = 'фон.png';
+    const birdImg = new Image(); birdImg.src = 'машаптичкп.png';
+    const pipeImg = new Image(); pipeImg.src = 'ручка.png';
+
+    const gridSize = 20;
+    let snake, food, direction, score, gameLoop;
+
+    let flappyLoop, flappyScore, flappyStartTime, isDying, deathTime;
+    let bird = { x: 50, y: 150, v: 0, width: 68, height: 68, angle: 0 };
+    let pipes = [];
+    const gravity = 0.35, jumpStrength = -6.5, basePipeSpeed = 3.0, pipeWidth = 50, pipeGap = 195;
+    const groundLevel = 375;
+    let flappyFrames = 0;
 
     function showScreen(screenId) {
-        document.querySelectorAll('body > div').forEach(div => div.style.display = 'none');
+        document.querySelectorAll('body > div.container').forEach(div => div.style.display = 'none');
         document.getElementById(screenId).style.display = 'block';
         if (gameLoop) clearInterval(gameLoop);
+        if (flappyLoop) clearInterval(flappyLoop);
+        currentGame = '';
     }
 
     async function startApp() {
-        try {
-            await vkBridge.send('VKWebAppInit');
-            isVKInitialized = true;
-            userInfo = await vkBridge.send('VKWebAppGetUserInfo');
-        } catch (e) {
-            console.log("Запущено вне VK или ошибка", e);
-        }
+        try { await vkBridge.send('VKWebAppInit'); isVKInitialized = true; userInfo = await vkBridge.send('VKWebAppGetUserInfo'); } catch (e) {}
     }
     startApp();
 
     function getFormattedDate() {
         const now = new Date();
         const pad = (n) => n.toString().padStart(2, '0');
-        const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-        const date = `${pad(now.getDate())}.${pad(now.getMonth() + 1)}`;
-        return { time, date };
+        return { time: `${pad(now.getHours())}:${pad(now.getMinutes())}`, date: `${pad(now.getDate())}.${pad(now.getMonth() + 1)}` };
     }
 
     function initGame() {
-        showScreen('screen-game');
-        document.getElementById('loading-game').style.display = 'none';
-        document.getElementById('game-area').style.display = 'block';
-        document.getElementById('gameOver').style.display = 'none';
-        document.getElementById('gameCanvas').style.display = 'block';
-        document.getElementById('player-name').textContent = userInfo.first_name;
-
+        showScreen('screen-game'); currentGame = 'snake';
         const canvas = document.getElementById('gameCanvas');
-        let containerWidth = document.getElementById('game-area').clientWidth;
-        if (containerWidth === 0) containerWidth = window.innerWidth - 40;
-        
-        canvas.width = Math.floor(containerWidth / gridSize) * gridSize;
+        canvas.width = Math.floor((document.getElementById('game-area').clientWidth || window.innerWidth - 40) / gridSize) * gridSize;
         canvas.height = canvas.width;
-
-        snake = [{ x: 10, y: 10 }];
-        direction = 'right';
-        changingDirection = false; 
-        score = 0;
-        document.getElementById('score').textContent = score;
+        snake = [{ x: 10, y: 10 }]; direction = 'right'; score = 0;
+        document.getElementById('score').textContent = 0; document.getElementById('gameOver').style.display = 'none';
+        document.getElementById('gameCanvas').style.display = 'block';
         generateFood();
-        
-        // --- ЛОГИКА ПОДСКАЗКИ (ТОЛЬКО ДЛЯ ПЕРВОГО ЗАПУСКА) ---
-        const tutorial = document.getElementById('tutorial-overlay');
-        
-        if (isFirstLaunchInSession) {
-            const tutKeys = document.getElementById('tut-keys');
-            const tutSwipe = document.getElementById('tut-swipe');
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-            if (isMobile) {
-                tutKeys.style.display = 'none';
-                tutSwipe.style.display = 'block';
-            } else {
-                tutKeys.style.display = 'block';
-                tutSwipe.style.display = 'none';
-            }
-
-            tutorial.style.display = 'flex';
-            tutorial.style.opacity = '1';
-            
-            if (tutorialTimeout) clearTimeout(tutorialTimeout);
-            tutorialTimeout = setTimeout(() => {
-                tutorial.style.opacity = '0';
-                setTimeout(() => {
-                    tutorial.style.display = 'none';
-                }, 1000);
-            }, 3000);
-
-            // Помечаем, что первый запуск состоялся
-            isFirstLaunchInSession = false;
-        } else {
-            // Если запуск не первый — скрываем подсказку сразу
-            tutorial.style.display = 'none';
-        }
-
-        gameLoop = setInterval(update, 120);
+        gameLoop = setInterval(updateSnake, 120);
     }
-
     function generateFood() {
         const canvas = document.getElementById('gameCanvas');
-        let isFoodOnSnake = true;
-        
-        while (isFoodOnSnake) {
-            food = {
-                x: Math.floor(Math.random() * (canvas.width / gridSize)),
-                y: Math.floor(Math.random() * (canvas.height / gridSize))
-            };
-            isFoodOnSnake = snake.some(segment => segment.x === food.x && segment.y === food.y);
-        }
+        food = { x: Math.floor(Math.random() * (canvas.width / gridSize)), y: Math.floor(Math.random() * (canvas.height / gridSize)) };
     }
-
-    function update() {
-        changingDirection = false;
-
+    function updateSnake() {
         const head = { x: snake[0].x, y: snake[0].y };
-        if (direction === 'right') head.x++;
-        if (direction === 'left') head.x--;
-        if (direction === 'up') head.y--;
-        if (direction === 'down') head.y++;
-
+        if (direction === 'right') head.x++; if (direction === 'left') head.x--;
+        if (direction === 'up') head.y--; if (direction === 'down') head.y++;
         const canvas = document.getElementById('gameCanvas');
-        if (head.x < 0 || head.x * gridSize >= canvas.width || head.y < 0 || head.y * gridSize >= canvas.height || snake.some((seg, i) => seg.x === head.x && seg.y === head.y)) {
-            return endGame();
+        if (head.x < 0 || head.x * gridSize >= canvas.width || head.y < 0 || head.y * gridSize >= canvas.height || snake.some(s => s.x === head.x && s.y === head.y)) {
+            clearInterval(gameLoop); document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').style.display = 'block'; document.getElementById('gameCanvas').style.display = 'none';
+            saveScore('snake', score); return;
         }
-
         snake.unshift(head);
-        if (head.x === food.x && head.y === food.y) {
-            score++;
-            document.getElementById('score').textContent = score;
-            generateFood();
-        } else {
-            snake.pop();
-        }
-        draw();
-    }
-
-    function draw() {
-        const canvas = document.getElementById('gameCanvas');
+        if (head.x === food.x && head.y === food.y) { score++; document.getElementById('score').textContent = score; generateFood(); } else { snake.pop(); }
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (let i = 0; i < snake.length; i++) {
-            ctx.fillStyle = i === 0 ? '#df1515' : '#000000';
-            ctx.fillRect(snake[i].x * gridSize, snake[i].y * gridSize, gridSize - 1, gridSize - 1);
-        }
-        ctx.fillStyle = '#ffbb00';
-        ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 1, gridSize - 1);
+        snake.forEach((s, i) => { ctx.fillStyle = i === 0 ? '#df1515' : '#000'; ctx.fillRect(s.x * gridSize, s.y * gridSize, gridSize - 1, gridSize - 1); });
+        ctx.fillStyle = '#ffbb00'; ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 1, gridSize - 1);
     }
 
-    function endGame() {
-        clearInterval(gameLoop);
-        if (tutorialTimeout) clearTimeout(tutorialTimeout);
-        document.getElementById('tutorial-overlay').style.display = 'none';
-        document.getElementById('finalScore').textContent = score;
-        document.getElementById('gameOver').style.display = 'block';
-        document.getElementById('gameCanvas').style.display = 'none';
-        saveScore();
+    function initFlappy() {
+        showScreen('screen-flappy'); currentGame = 'flappy';
+        const canvas = document.getElementById('flappyCanvas');
+        canvas.width = document.getElementById('flappy-area').clientWidth || window.innerWidth - 40;
+        canvas.height = 400;
+        bird.y = 150; bird.v = 0; bird.angle = 0; pipes = []; flappyFrames = 0; flappyScore = 0;
+        isDying = false; deathTime = 0; flappyStartTime = Date.now();
+        document.getElementById('flappy-score').textContent = 0;
+        document.getElementById('flappyGameOver').style.display = 'none';
+        document.getElementById('flappyCanvas').style.display = 'block';
+        document.getElementById('tutorial-overlay-flappy').style.display = 'flex';
+        document.getElementById('tutorial-overlay-flappy').style.opacity = '1';
+        flappyLoop = setInterval(updateFlappy, 20);
     }
 
-    async function saveScore() {
-        if (!isVKInitialized) return;
-        try {
-            const { time, date } = getFormattedDate(); 
-            const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['leaderboard_snake'] });
-            let list = data.keys[0].value ? JSON.parse(data.keys[0].value) : [];
-
-            const newEntry = {
-                id: userInfo.id,
-                score: score,
-                time: time,
-                date: date
-            };
-
-            list.push(newEntry);
-            list.sort((a, b) => b.score - a.score);
-
-            let userCounts = {};
-            list = list.filter(entry => {
-                userCounts[entry.id] = (userCounts[entry.id] || 0) + 1;
-                return userCounts[entry.id] <= 5;
-            });
-
-            await vkBridge.send('VKWebAppStorageSet', { key: 'leaderboard_snake', value: JSON.stringify(list.slice(0, 50)) });
-        } catch (e) { console.error("Ошибка сохранения:", e); }
+    function jumpFlappy() {
+        if (currentGame !== 'flappy' || isDying) return;
+        bird.v = jumpStrength;
+        bird.angle = -20;
+        const tut = document.getElementById('tutorial-overlay-flappy');
+        if (tut.style.display === 'flex') { tut.style.opacity = '0'; setTimeout(() => tut.style.display = 'none', 500); }
     }
 
-    async function loadLeaderboard() {
-        const userPhoto = document.getElementById('lb-user-photo');
-        if (userInfo.photo_100) {
-            userPhoto.src = userInfo.photo_100;
-            userPhoto.style.display = 'block';
-        }
-        document.getElementById('lb-user-name').textContent = `${userInfo.first_name} ${userInfo.last_name}`;
+    function updateFlappy() {
+        const canvas = document.getElementById('flappyCanvas');
 
-        const tbody = document.querySelector('#leaderboardTable tbody');
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Загрузка...</td></tr>';
-        
-        if (!isVKInitialized) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">VK не инициализирован</td></tr>';
+        if (isDying) {
+            let now = Date.now();
+            if (now - deathTime > 500) {
+                bird.v += gravity * 2.5;
+                bird.y += bird.v;
+                if (bird.angle < 90) bird.angle += 4;
+                if (bird.y + bird.height >= groundLevel) {
+                    bird.y = groundLevel - bird.height;
+                    clearInterval(flappyLoop);
+                    document.getElementById('flappyFinalScore').textContent = flappyScore;
+                    document.getElementById('flappyGameOver').style.display = 'block';
+                    document.getElementById('flappyCanvas').style.display = 'none';
+                    saveScore('flappy', flappyScore);
+                }
+            }
+            drawFlappy();
             return;
         }
-        try {
-            const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['leaderboard_snake'] });
-            if (!data.keys[0].value || JSON.parse(data.keys[0].value).length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Рекордов пока нет</td></tr>';
-                return;
+
+        bird.v += gravity; bird.y += bird.v;
+        if (bird.v > 0 && bird.angle < 30) bird.angle += 1.5;
+
+        let elapsedTime = (Date.now() - flappyStartTime) / 1000;
+        let currentPipeSpeed = basePipeSpeed * Math.min(2, 1 + (elapsedTime / 40));
+
+        if (flappyFrames % 90 === 0) {
+            let maxTopY = 145; // Ограничитель, чтобы ручки не ушли слишком низко под землю
+            let topY = Math.floor(Math.random() * (maxTopY - 50 + 1)) + 50;
+
+            // 15% шанс на появление двигающейся ручки
+            let isMoving = Math.random() < elapsedTime * 0.02;
+            let moveDir = isMoving ? (Math.random() < 0.5 ? 1 : -1) : 0;
+
+            pipes.push({ x: canvas.width, topY: topY, passed: false, isMoving: isMoving, moveDir: moveDir, speedY: 1.5 });
+        }
+
+        // Значительно уменьшенный хитбокс птицы для защиты от "фантомных" касаний
+        let bBox = { x: bird.x + 25, y: bird.y + 25, w: bird.width - 50, h: bird.height - 50 };
+
+        pipes.forEach(p => {
+            p.x -= currentPipeSpeed;
+
+            // Логика движения ручек
+            if (p.isMoving) {
+                p.topY += p.moveDir * p.speedY;
+                let maxTopY = 145;
+                if (p.topY < 50) {
+                    p.topY = 50;
+                    p.moveDir = 1; // меняем направление вниз
+                } else if (p.topY > maxTopY) {
+                    p.topY = maxTopY;
+                    p.moveDir = -1; // меняем направление вверх
+                }
             }
-            const list = JSON.parse(data.keys[0].value);
-            tbody.innerHTML = list.map((e, i) => `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td>${e.score}</td>
-                    <td><span style="font-size: 0.9em; color: #aaa;">${e.date || ''}</span><br>${e.time || ''}</td>
-                </tr>
-            `).join('');
-        } catch (e) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Ошибка загрузки</td></tr>'; }
+
+            // Уменьшенный горизонтальный хитбокс для ручки
+            let pBoxW = pipeWidth * 0.4;
+            let pX = p.x + (pipeWidth - pBoxW) / 2;
+
+            if (bBox.x < pX + pBoxW && bBox.x + bBox.w > pX) {
+                if (bBox.y < p.topY || bBox.y + bBox.h > p.topY + pipeGap) { isDying = true; deathTime = Date.now(); }
+            }
+            if (p.x + pipeWidth < bird.x && !p.passed) { flappyScore++; document.getElementById('flappy-score').textContent = flappyScore; p.passed = true; }
+        });
+
+        pipes = pipes.filter(p => p.x > -pipeWidth);
+        if (bird.y + bird.height >= groundLevel) { bird.y = groundLevel - bird.height; isDying = true; deathTime = Date.now(); }
+        drawFlappy();
+        flappyFrames++;
     }
 
-    // УПРАВЛЕНИЕ КЛАВИАТУРОЙ
-    document.addEventListener('keydown', (event) => {
-        if (changingDirection) return;
+    function drawFlappy() {
+        const ctx = document.getElementById('flappyCanvas').getContext('2d');
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        if (bgImg.complete) ctx.drawImage(bgImg, 0, 0, ctx.canvas.width, ctx.canvas.height);
+        pipes.forEach(p => {
+            if (pipeImg.complete) {
+                ctx.save();
+                ctx.translate(p.x + pipeWidth / 2, p.topY);
+                ctx.scale(1, -1);
+                ctx.drawImage(pipeImg, -pipeWidth / 2, 0, pipeWidth, 400);
+                ctx.restore();
+                ctx.drawImage(pipeImg, p.x, p.topY + pipeGap, pipeWidth, 400);
+            }
+        });
 
-        const keyPressed = event.keyCode;
-        const goingUp = direction === 'up';
-        const goingDown = direction === 'down';
-        const goingRight = direction === 'right';
-        const goingLeft = direction === 'left';
+        if (birdImg.complete) {
+            ctx.save();
+            ctx.translate(bird.x + bird.width / 2, bird.y + bird.height / 2);
+            ctx.rotate(bird.angle * Math.PI / 180);
+            ctx.drawImage(birdImg, -bird.width / 2, -bird.height / 2, bird.width, bird.height);
+            ctx.restore();
+        }
+    }
 
-        if ((keyPressed === 37 || keyPressed === 65) && !goingRight) { direction = 'left'; changingDirection = true; }
-        if ((keyPressed === 38 || keyPressed === 87) && !goingDown) { direction = 'up'; changingDirection = true; }
-        if ((keyPressed === 39 || keyPressed === 68) && !goingLeft) { direction = 'right'; changingDirection = true; }
-        if ((keyPressed === 40 || keyPressed === 83) && !goingUp) { direction = 'down'; changingDirection = true; }
+    async function saveScore(game, score) {
+        if (!isVKInitialized) return;
+        const key = 'leaderboard_' + game;
+        const data = await vkBridge.send('VKWebAppStorageGet', { keys: [key] });
+        let list = data.keys[0].value ? JSON.parse(data.keys[0].value) : [];
+        list.push({ id: userInfo.id, score, ...getFormattedDate() });
+        list.sort((a, b) => b.score - a.score);
+        let counts = {};
+        list = list.filter(e => { counts[e.id] = (counts[e.id] || 0) + 1; return counts[e.id] <= 5; });
+        await vkBridge.send('VKWebAppStorageSet', { key, value: JSON.stringify(list.slice(0, 50)) });
+    }
+    async function loadLeaderboard(game) {
+        document.getElementById('tab-snake').className = game === 'snake' ? 'tab-btn active' : 'tab-btn';
+        document.getElementById('tab-flappy').className = game === 'flappy' ? 'tab-btn active' : 'tab-btn';
+        const photo = document.getElementById('lb-user-photo');
+        if (userInfo.photo_100) { photo.src = userInfo.photo_100; photo.style.display = 'block'; }
+        document.getElementById('lb-user-name').textContent = `${userInfo.first_name} ${userInfo.last_name}`;
+        const data = await vkBridge.send('VKWebAppStorageGet', { keys: ['leaderboard_' + game] });
+        const list = data.keys[0].value ? JSON.parse(data.keys[0].value) : [];
+        document.querySelector('#leaderboardTable tbody').innerHTML = list.length ? list.map((e, i) => `<tr><td>${i+1}</td><td>${e.score}</td><td>${e.date}</td></tr>`).join('') : '<tr><td colspan="3">Нет рекордов</td></tr>';
+        showScreen('screen-leaderboard');
+    }
+    window.addEventListener('keydown', e => {
+        if (currentGame === 'snake') {
+            if ((e.keyCode === 37 || e.keyCode === 65) && direction !== 'right') direction = 'left';
+            if ((e.keyCode === 38 || e.keyCode === 87) && direction !== 'down') direction = 'up';
+            if ((e.keyCode === 39 || e.keyCode === 68) && direction !== 'left') direction = 'right';
+            if ((e.keyCode === 40 || e.keyCode === 83) && direction !== 'up') direction = 'down';
+        } else if (currentGame === 'flappy') { if ([32, 38, 87].includes(e.keyCode)) { e.preventDefault(); jumpFlappy(); } }
     });
-
-    // УПРАВЛЕНИЕ СВАЙПАМИ
-    let touchStartX = 0;
-    let touchStartY = 0;
-
-    document.addEventListener('touchstart', function(event) {
-        if (document.getElementById('screen-game').style.display !== 'block') return;
-        touchStartX = event.changedTouches[0].screenX;
-        touchStartY = event.changedTouches[0].screenY;
-    }, {passive: false});
-
-    document.addEventListener('touchmove', function(event) {
-        if (document.getElementById('screen-game').style.display === 'block') {
-            event.preventDefault(); 
-        }
-    }, {passive: false});
-
-    document.addEventListener('touchend', function(event) {
-        if (document.getElementById('screen-game').style.display !== 'block') return;
-        if (changingDirection) return;
-
-        let touchEndX = event.changedTouches[0].screenX;
-        let touchEndY = event.changedTouches[0].screenY;
-
-        let diffX = touchEndX - touchStartX;
-        let diffY = touchEndY - touchStartY;
-
-        if (Math.abs(diffX) < 15 && Math.abs(diffY) < 15) return;
-
-        const goingUp = direction === 'up';
-        const goingDown = direction === 'down';
-        const goingRight = direction === 'right';
-        const goingLeft = direction === 'left';
-
-        if (Math.abs(diffX) > Math.abs(diffY)) {
-            if (diffX > 0 && !goingLeft) { direction = 'right'; changingDirection = true; } 
-            else if (diffX < 0 && !goingRight) { direction = 'left'; changingDirection = true; }
-        } else {
-            if (diffY > 0 && !goingUp) { direction = 'down'; changingDirection = true; } 
-            else if (diffY < 0 && !goingDown) { direction = 'up'; changingDirection = true; }
-        }
-    }, {passive: false});
-
+    window.addEventListener('mousedown', () => { if (currentGame === 'flappy') jumpFlappy(); });
+    let tX = 0, tY = 0;
+    window.addEventListener('touchstart', e => { if (currentGame === 'flappy') jumpFlappy(); else if (currentGame === 'snake') { tX = e.touches[0].screenX; tY = e.touches[0].screenY; } }, {passive: false});
+    window.addEventListener('touchmove', e => { if (currentGame) e.preventDefault(); }, {passive: false});
+    window.addEventListener('touchend', e => {
+        if (currentGame !== 'snake') return;
+        let dX = e.changedTouches[0].screenX - tX, dY = e.changedTouches[0].screenY - tY;
+        if (Math.abs(dX) < 15 && Math.abs(dY) < 15) return;
+        if (Math.abs(dX) > Math.abs(dY)) { if (dX > 0 && direction !== 'left') direction = 'right'; else if (dX < 0 && direction !== 'right') direction = 'left'; }
+        else { if (dY > 0 && direction !== 'up') direction = 'down'; else if (dY < 0 && direction !== 'down') direction = 'up'; }
+    });
 </script>
 </body>
 </html>
