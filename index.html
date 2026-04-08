@@ -157,7 +157,8 @@
     let flappyLoop, flappyScore, flappyStartTime, isDying, deathTime;
     let bird = { x: 50, y: 150, v: 0, width: 68, height: 68, angle: 0 };
     let pipes = [];
-    const gravity = 0.35, jumpStrength = -6.5, basePipeSpeed = 3.0, pipeWidth = 50, pipeGap = 130;
+    let nextPipeFrame = 0; // Добавлено для плавной частоты появления труб
+    const gravity = 0.35, jumpStrength = -6.5, basePipeSpeed = 3.0, pipeWidth = 50; 
     const groundLevel = 375;
     let flappyFrames = 0;
 
@@ -245,7 +246,7 @@
         const canvas = document.getElementById('gameCanvas');
         if (head.x < 0 || head.x * gridSize >= canvas.width || head.y < 0 || head.y * gridSize >= canvas.height || snake.some(seg => seg.x === head.x && seg.y === head.y)) {
             clearInterval(gameLoop);
-            currentGame = 'gameover'; // ИЗМЕНЕНО: снимаем блокировку нажатий
+            currentGame = 'gameover';
             document.getElementById('finalScoreSnake').textContent = score;
             document.getElementById('gameOverSnake').style.display = 'block';
             document.getElementById('gameCanvas').style.display = 'none';
@@ -285,6 +286,7 @@
         canvas.height = 400;
         bird.y = 150; bird.v = 0; bird.angle = 0; pipes = []; flappyFrames = 0; flappyScore = 0;
         isDying = false; deathTime = 0; flappyStartTime = Date.now();
+        nextPipeFrame = 0; // Сбрасываем таймер труб
         document.getElementById('flappy-score').textContent = 0;
         document.getElementById('flappyGameOver').style.display = 'none';
         document.getElementById('flappyCanvas').style.display = 'block';
@@ -314,7 +316,7 @@
                 if (bird.y + bird.height >= groundLevel) {
                     bird.y = groundLevel - bird.height;
                     clearInterval(flappyLoop);
-                    currentGame = 'gameover'; // ИЗМЕНЕНО: снимаем блокировку нажатий
+                    currentGame = 'gameover';
                     document.getElementById('flappyFinalScore').textContent = flappyScore;
                     document.getElementById('flappyGameOver').style.display = 'block';
                     document.getElementById('flappyCanvas').style.display = 'none';
@@ -332,15 +334,26 @@
         if (bird.v > 0 && bird.angle < 30) bird.angle += 1.5;
 
         let elapsedTime = (Date.now() - flappyStartTime) / 1000;
+        let progress = Math.min(1, elapsedTime / 60); // от 0 до 1 за 60 секунд
         let currentPipeSpeed = basePipeSpeed * Math.min(2, 1 + (elapsedTime / 40));
 
-        if (flappyFrames % 45 === 0) {
+        // СПАВН ТРУБ С ИЗМЕНЯЮЩЕЙСЯ СЛОЖНОСТЬЮ
+        if (flappyFrames >= nextPipeFrame) {
             let maxTopY = 145;
             let topY = Math.floor(Math.random() * (maxTopY - 50 + 1)) + 50;
             
             let isMoving = Math.random() < 0.15; 
             let verticalSpeed = isMoving ? (Math.random() > 0.5 ? 0.7 : -0.7) : 0;
-            pipes.push({ x: canvas.width, topY: topY, passed: false, moving: isMoving, vy: verticalSpeed });
+            
+            // Зазор по вертикали: плавно уменьшается с 162.5 (130 * 1.25) до 130
+            let currentGap = 162.5 - (32.5 * progress);
+
+            // Сохраняем индивидуальный зазор для каждой трубы
+            pipes.push({ x: canvas.width, topY: topY, passed: false, moving: isMoving, vy: verticalSpeed, gap: currentGap });
+
+            // Расстояние по горизонтали: плавно уменьшается с 90 до 45 кадров (частота растёт)
+            let currentInterval = 90 - (45 * progress);
+            nextPipeFrame = flappyFrames + Math.round(currentInterval);
         }
 
         let bBox = { x: bird.x + 25, y: bird.y + 25, w: bird.width - 50, h: bird.height - 50 };
@@ -358,7 +371,8 @@
             let pBoxW = pipeWidth * 0.4;
             let pX = p.x + (pipeWidth - pBoxW) / 2;
             if (bBox.x < pX + pBoxW && bBox.x + bBox.w > pX) {
-                if (bBox.y < p.topY || bBox.y + bBox.h > p.topY + pipeGap) {
+                // Проверяем столкновение, используя индивидуальный зазор трубы p.gap
+                if (bBox.y < p.topY || bBox.y + bBox.h > p.topY + p.gap) {
                     isDying = true; deathTime = Date.now();
                     document.getElementById('tutorial-overlay-flappy').style.display = 'none';
                 }
@@ -383,7 +397,8 @@
             if (pipeImg.complete) {
                 ctx.save(); ctx.translate(p.x + pipeWidth / 2, p.topY); ctx.scale(1, -1);
                 ctx.drawImage(pipeImg, -pipeWidth / 2, 0, pipeWidth, 400); ctx.restore();
-                ctx.drawImage(pipeImg, p.x, p.topY + pipeGap, pipeWidth, 400);
+                // Рисуем нижнюю трубу с учетом её индивидуального зазора p.gap
+                ctx.drawImage(pipeImg, p.x, p.topY + p.gap, pipeWidth, 400);
             }
         });
         if (birdImg.complete) {
@@ -453,7 +468,6 @@
     }, {passive: false});
 
     window.addEventListener('touchmove', e => { 
-        // ИЗМЕНЕНО: блокируем скролл только во время активной игры
         if (currentGame === 'flappy' || currentGame === 'snake') {
             e.preventDefault(); 
         }
