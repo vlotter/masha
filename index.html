@@ -106,7 +106,7 @@
 <!-- ЭКРАН ПТИЧКИ -->
 <div id="screen-flappy" class="container game-container" style="display: none;">
     <div id="flappy-area">
-        <div class="game-header"><span><span id="player-name-flappy">Игрок</span></span><span> Счет: <span id="flappy-score">0</span></span></div>
+        <div class="game-header"><span><span id="player-name-flappy">Игрок</span></span><span>Счет: <span id="flappy-score">0</span></span></div>
         <div style="position: relative; width: 100%;">
             <canvas id="flappyCanvas" style="border-radius: 8px; border: 2px solid #58a6ff;"></canvas>
             <div id="tutorial-overlay-flappy" class="tutorial-overlay" style="display: none;">
@@ -157,7 +157,7 @@
     let flappyLoop, flappyScore, flappyStartTime, isDying, deathTime;
     let bird = { x: 50, y: 150, v: 0, width: 68, height: 68, angle: 0 };
     let pipes = [];
-    const gravity = 0.35, jumpStrength = -6.5, basePipeSpeed = 3.0, pipeWidth = 50, pipeGap = 130; // ИЗМЕНЕНО: Разрыв уменьшен
+    const gravity = 0.35, jumpStrength = -6.5, basePipeSpeed = 3.0, pipeWidth = 50, pipeGap = 130;
     const groundLevel = 375;
     let flappyFrames = 0;
 
@@ -180,7 +180,7 @@
         return { time: `${pad(now.getHours())}:${pad(now.getMinutes())}`, date: `${pad(now.getDate())}.${pad(now.getMonth() + 1)}` };
     }
 
-    // --- ЛОГИКА ЗМЕЙКИ (ИЗ ZMEYA.HTML) ---
+    // --- ЛОГИКА ЗМЕЙКИ ---
     function initGame() {
         showScreen('screen-game'); currentGame = 'snake';
         document.getElementById('gameOverSnake').style.display = 'none';
@@ -245,6 +245,7 @@
         const canvas = document.getElementById('gameCanvas');
         if (head.x < 0 || head.x * gridSize >= canvas.width || head.y < 0 || head.y * gridSize >= canvas.height || snake.some(seg => seg.x === head.x && seg.y === head.y)) {
             clearInterval(gameLoop);
+            currentGame = 'gameover'; // ИЗМЕНЕНО: снимаем блокировку нажатий
             document.getElementById('finalScoreSnake').textContent = score;
             document.getElementById('gameOverSnake').style.display = 'block';
             document.getElementById('gameCanvas').style.display = 'none';
@@ -280,7 +281,6 @@
     function initFlappy() {
         showScreen('screen-flappy'); currentGame = 'flappy';
         const canvas = document.getElementById('flappyCanvas');
-        document.getElementById('player-name-flappy').textContent = userInfo.first_name;
         canvas.width = document.getElementById('flappy-area').clientWidth || window.innerWidth - 40;
         canvas.height = 400;
         bird.y = 150; bird.v = 0; bird.angle = 0; pipes = []; flappyFrames = 0; flappyScore = 0;
@@ -314,6 +314,7 @@
                 if (bird.y + bird.height >= groundLevel) {
                     bird.y = groundLevel - bird.height;
                     clearInterval(flappyLoop);
+                    currentGame = 'gameover'; // ИЗМЕНЕНО: снимаем блокировку нажатий
                     document.getElementById('flappyFinalScore').textContent = flappyScore;
                     document.getElementById('flappyGameOver').style.display = 'block';
                     document.getElementById('flappyCanvas').style.display = 'none';
@@ -333,13 +334,11 @@
         let elapsedTime = (Date.now() - flappyStartTime) / 1000;
         let currentPipeSpeed = basePipeSpeed * Math.min(2, 1 + (elapsedTime / 40));
 
-        // ИЗМЕНЕНО: Частота появления труб увеличена
         if (flappyFrames % 45 === 0) {
             let maxTopY = 145;
             let topY = Math.floor(Math.random() * (maxTopY - 50 + 1)) + 50;
             
-            // ИЗМЕНЕНО: Логика для движущихся труб
-            let isMoving = Math.random() < 0.15; // 15% шанс
+            let isMoving = Math.random() < 0.15; 
             let verticalSpeed = isMoving ? (Math.random() > 0.5 ? 0.7 : -0.7) : 0;
             pipes.push({ x: canvas.width, topY: topY, passed: false, moving: isMoving, vy: verticalSpeed });
         }
@@ -349,10 +348,9 @@
         pipes.forEach(p => {
             p.x -= currentPipeSpeed;
 
-            // ИЗМЕНЕНО: Движение труб по вертикали
             if (p.moving) {
                 p.topY += p.vy;
-                if (p.topY < 50 || p.topY > 145) { // Ограничение движения
+                if (p.topY < 50 || p.topY > 145) { 
                     p.vy *= -1;
                 }
             }
@@ -446,16 +444,20 @@
     window.addEventListener('mousedown', () => { if (currentGame === 'flappy') jumpFlappy(); });
 
     let tX = 0, tY = 0;
-    // ИЗМЕНЕНО: Добавлен e.preventDefault() для устранения задержки на мобильных
     window.addEventListener('touchstart', e => {
         if (currentGame === 'flappy') {
-            e.preventDefault(); // Устраняет "микрофриз" и двойные прыжки
+            e.preventDefault();
             jumpFlappy();
         }
         else if (currentGame === 'snake') { tX = e.touches[0].screenX; tY = e.touches[0].screenY; }
     }, {passive: false});
 
-    window.addEventListener('touchmove', e => { if (currentGame) e.preventDefault(); }, {passive: false});
+    window.addEventListener('touchmove', e => { 
+        // ИЗМЕНЕНО: блокируем скролл только во время активной игры
+        if (currentGame === 'flappy' || currentGame === 'snake') {
+            e.preventDefault(); 
+        }
+    }, {passive: false});
 
     window.addEventListener('touchend', e => {
         if (currentGame !== 'snake' || changingDirection) return;
